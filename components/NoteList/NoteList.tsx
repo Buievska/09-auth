@@ -1,11 +1,11 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import css from "./NoteList.module.css";
-import toast from "react-hot-toast";
-import { deleteNote } from "@/lib/api";
-import { Note } from "@/types/note";
 import Link from "next/link";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { deleteNote } from "@/lib/api/clientApi";
+import type { Note } from "@/types/note";
+import { toast } from "react-hot-toast";
+import css from "./NoteList.module.css";
 
 interface NoteListProps {
   notes: Note[];
@@ -14,37 +14,58 @@ interface NoteListProps {
 export default function NoteList({ notes }: NoteListProps) {
   const queryClient = useQueryClient();
 
-  const deleteNoteMutate = useMutation({
-    mutationFn: (id: string) => deleteNote(id),
-    onSuccess() {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
+  const {
+    mutate: handleDelete,
+    isPending: isDeleting,
+    variables: deletingId,
+  } = useMutation<void, Error, string>({
+    mutationFn: async (id: string) => {
+      await deleteNote(id);
     },
-    onError(error) {
-      toast.error(error.message);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      toast.success("Note deleted");
+    },
+    onError: (err: Error) => {
+      console.error("Failed to delete note:", err);
+      toast.error("Failed to delete note");
     },
   });
 
-  function handleDeleteNote(id: string) {
-    deleteNoteMutate.mutate(id);
+  if (!notes || notes.length === 0) {
+    return (
+      <div className={css.emptyState}>
+        <h3>No notes found</h3>
+        <p>Create your first note to get started!</p>
+      </div>
+    );
   }
 
   return (
     <ul className={css.list}>
       {notes.map((note) => {
+        const isThisDeleting = isDeleting && deletingId === note.id;
+
         return (
-          <li className={css.listItem} key={note.id}>
+          <li key={note.id} className={css.listItem}>
             <h2 className={css.title}>{note.title}</h2>
-            <p className={css.content}>{note.content}</p>
+            <p className={css.content}>
+              {note.content?.substring(0, 100) ?? "No content"}
+            </p>
             <div className={css.footer}>
-              <span className={css.tag}>{note.tag}</span>
-              <Link className={css.link} href={`/notes/${note.id}`}>
+              {note.tag && <span className={css.tag}>{note.tag}</span>}
+
+              <Link href={`/notes/${note.id}`} className={css.link}>
                 View details
               </Link>
+
               <button
-                onClick={() => handleDeleteNote(note.id)}
                 className={css.button}
+                onClick={() => handleDelete(note.id)}
+                disabled={isThisDeleting}
+                aria-label={`Delete note titled ${note.title}`}
               >
-                Delete
+                {isThisDeleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </li>
