@@ -1,20 +1,20 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { NoteFormData } from "@/types/note";
+import { createNoteProps } from "../api/clientApi";
 
-type useNoteStore = {
-  draft: NoteFormData;
-  setDraft: (note: NoteFormData) => void;
+interface NoteDraftStore {
+  draft: createNoteProps;
+  setDraft: (note: createNoteProps) => void;
   clearDraft: () => void;
-};
+}
 
-const initialDraft: NoteFormData = {
+const initialDraft: createNoteProps = {
   title: "",
   content: "",
   tag: "Todo",
 };
 
-export const useNoteStore = create<useNoteStore>()(
+export const useNoteDraftStore = create<NoteDraftStore>()(
   persist(
     (set) => ({
       draft: initialDraft,

@@ -1,54 +1,58 @@
-import Image from "next/image";
-import type { Metadata } from "next";
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getCurrentUserServer } from "@/lib/api/serverApi";
+import { Metadata } from "next";
 import css from "./page.module.css";
-
-export const dynamic = "force-dynamic";
+import Image from "next/image";
+import Link from "next/link";
+import { getServerMe } from "@/lib/api/serverApi";
 
 export const metadata: Metadata = {
-  title: "NoteHub | Profile",
-  description: "Review your NoteHub profile details and manage your account.",
+  title: "Profile | Note Hub",
+  description: "Page for viewing and editing profile",
+  icons: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
+  openGraph: {
+    title: "Profile | Note Hub",
+    description: "Page for viewing and editing profile",
+    url: "https://08-zustand-jet.vercel.app",
+    images: [
+      {
+        url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Profile | Note Hub",
+      },
+    ],
+  },
 };
 
-const ProfilePage = async () => {
-  const user = await getCurrentUserServer();
-
-  if (!user) redirect("/sign-in");
+const Profile = async () => {
+  const user = await getServerMe();
 
   return (
-    <main className={css.mainContent}>
-      <section className={css.profileCard}>
-        <div className={css.header}>
-          <h1 className={css.formTitle}>Profile</h1>
-          <Link href="/profile/edit" className={css.editProfileButton}>
-            Edit profile
-          </Link>
+    <>
+      <main className={css.mainContent}>
+        <div className={css.profileCard}>
+          <div className={css.header}>
+            <h1 className={css.formTitle}>Profile Page</h1>
+            <Link href="/profile/edit" className={css.editProfileButton}>
+              Edit Profile
+            </Link>
+          </div>
+          <div className={css.avatarWrapper}>
+            <Image
+              src={user.avatar}
+              alt="User Avatar"
+              width={120}
+              height={120}
+              className={css.avatar}
+            />
+          </div>
+          <div className={css.profileInfo}>
+            <p>Username: {user.username}</p>
+            <p>Email: {user.email}</p>
+          </div>
         </div>
-
-        <div className={css.avatarWrapper}>
-          <Image
-            src={user.avatar}
-            alt={`${user.username} avatar`}
-            width={120}
-            height={120}
-            className={css.avatar}
-            priority
-          />
-        </div>
-
-        <div className={css.profileInfo}>
-          <p>
-            <strong>Email:</strong> {user.email}
-          </p>
-          <p>
-            <strong>Username:</strong> {user.username}
-          </p>
-        </div>
-      </section>
-    </main>
+      </main>
+    </>
   );
 };
 
-export default ProfilePage;
+export default Profile;

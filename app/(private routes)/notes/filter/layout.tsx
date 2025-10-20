@@ -1,10 +1,9 @@
-import { ReactNode } from "react";
 import css from "./LayoutNotes.module.css";
 
-interface NotesLayoutProps {
-  children: ReactNode;
-  sidebar: ReactNode;
-}
+type NotesLayoutProps = {
+  children: React.ReactNode;
+  sidebar: React.ReactNode;
+};
 
 const NotesLayout = ({ children, sidebar }: NotesLayoutProps) => {
   return (

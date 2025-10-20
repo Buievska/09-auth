@@ -1,127 +1,91 @@
-import axios, { AxiosError, type AxiosRequestConfig } from "axios";
-import type { Note } from "@/types/note";
-import type { User } from "@/types/user";
-import type { AuthCredentials, UpdateUserRequest } from "@/types/auth";
+import { User } from "@/types/user";
+import type { Note, NoteTags } from "../../types/note";
+import { nextServer } from "./api";
 
-export interface FetchNotesParams {
-  page?: number;
-  perPage?: number;
-  search?: string;
-  tag?: string;
-}
-
-export interface FetchNotesResponse {
+export interface fetchNotesProps {
   notes: Note[];
   totalPages: number;
 }
 
-const clientApi = axios.create({
-  baseURL: "",
-});
+export interface createNoteProps {
+  title: string;
+  content: string;
+  tag: NoteTags;
+}
 
-const buildNotesParams = ({
-  page = 1,
-  perPage = 12,
-  search,
-  tag,
-}: FetchNotesParams = {}) => ({
-  page,
-  perPage,
-  ...(search && search.trim() !== "" ? { search } : {}),
-  ...(tag && tag !== "All" ? { tag } : {}),
-});
+export type UserRegister = {
+  email: string;
+  password: string;
+};
 
-export const fetchNotesRequest = async (
-  params?: FetchNotesParams,
-  config?: AxiosRequestConfig
-) => {
-  const response = await clientApi.get<FetchNotesResponse>("/api/notes", {
-    params: buildNotesParams(params),
-    ...config,
+export type UpdateUserRequest = {
+  username: string;
+};
+
+export async function fetchNotes(
+  search: string,
+  page: number,
+  tag?: string
+): Promise<fetchNotesProps> {
+  const request = await nextServer.get<fetchNotesProps>("/notes", {
+    params: {
+      search,
+      page,
+      perPage: 12,
+      tag,
+    },
   });
-  return response.data;
-};
 
-export const fetchNoteByIdRequest = async (
-  id: string,
-  config?: AxiosRequestConfig
-) => {
-  const response = await clientApi.get<Note>(`/api/notes/${id}`, config);
-  return response.data;
-};
+  return request.data;
+}
 
-export const createNoteRequest = async (
-  payload: Omit<Note, "id" | "createdAt" | "updatedAt">,
-  config?: AxiosRequestConfig
-) => {
-  const response = await clientApi.post<Note>("/api/notes", payload, config);
-  return response.data;
-};
+export async function createNote(note: createNoteProps): Promise<Note> {
+  const postRequest = await nextServer.post<Note>("/notes", note);
 
-export const updateNoteRequest = async (
-  id: string,
-  payload: Partial<Note>,
-  config?: AxiosRequestConfig
-) => {
-  const response = await clientApi.patch<Note>(
-    `/api/notes/${id}`,
-    payload,
-    config
-  );
-  return response.data;
-};
+  return postRequest.data;
+}
 
-export const deleteNoteRequest = async (
-  id: string,
-  config?: AxiosRequestConfig
-) => {
-  const response = await clientApi.delete<Note>(`/api/notes/${id}`, config);
-  return response.data;
-};
+export async function deleteNote(id: string): Promise<Note> {
+  const deleteRequest = await nextServer.delete<Note>(`/notes/${id}`);
+  return deleteRequest.data;
+}
 
-export const fetchNotes = (params?: FetchNotesParams) =>
-  fetchNotesRequest(params);
-export const fetchNoteById = (id: string) => fetchNoteByIdRequest(id);
-export const createNote = (
-  payload: Omit<Note, "id" | "createdAt" | "updatedAt">
-) => createNoteRequest(payload);
-export const updateNote = (id: string, payload: Partial<Note>) =>
-  updateNoteRequest(id, payload);
-export const deleteNote = (id: string) => deleteNoteRequest(id);
+export async function fetchNoteById(id: string): Promise<Note> {
+  const res = await nextServer.get<Note>(`/notes/${id}`);
+  return res.data;
+}
 
-export const login = (credentials: AuthCredentials) =>
-  clientApi.post<User>("/api/auth/login", credentials).then((res) => res.data);
+export async function register(data: UserRegister) {
+  const res = await nextServer.post<User>("/auth/register", data);
+  return res.data;
+}
 
-export const register = async (credentials: AuthCredentials) => {
+export async function login(data: UserRegister) {
+  const res = await nextServer.post<User>("/auth/login", data);
+  return res.data;
+}
+
+export async function logout(): Promise<void> {
+  await nextServer.post("/auth/logout");
+}
+
+export async function checkSession(): Promise<User | null> {
   try {
-    const response = await clientApi.post<User>(
-      "/api/auth/register",
-      credentials
-    );
-    return response.data;
-  } catch (error: unknown) {
-    const axiosError = error as AxiosError<{ message: string }>;
-
-    if (axiosError.response?.status === 409) {
-      throw new Error("Користувач з таким email вже існує");
-    }
-
-    throw new Error(
-      axiosError.response?.data?.message || "Помилка при реєстрації"
-    );
+    // Цей запит поверне користувача, якщо сесія дійсна
+    const { data } = await nextServer.get<User>("/auth/session");
+    return data;
+  } catch {
+    // Якщо сесії немає, сервер поверне помилку (напр. 401), і ми потрапимо сюди
+    return null;
   }
+}
+
+export async function getMe() {
+  const { data } = await nextServer.get<User>("/users/me");
+  return data;
+}
+
+export const updateMe = async (payload: UpdateUserRequest) => {
+  const res = await nextServer.patch<User>("/users/me", payload);
+  return res.data;
 };
-
-export const logout = () =>
-  clientApi.post("/api/auth/logout").then((res) => res.data);
-
-export const getSession = () =>
-  clientApi
-    .get<User | null>("/api/auth/session")
-    .then((res) => res.data || null);
-
-export const getCurrentUser = () =>
-  clientApi.get<User>("/api/users/me").then((res) => res.data);
-
-export const updateUser = (payload: UpdateUserRequest) =>
-  clientApi.patch<User>("/api/users/me", payload).then((res) => res.data);

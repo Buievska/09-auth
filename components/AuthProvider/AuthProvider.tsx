@@ -1,65 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-import { getSession } from "@/lib/api/clientApi";
-import { useAuthStore, type AuthState } from "@/lib/store/authStore";
+import { checkSession } from "@/lib/api/clientApi";
+import { useAuthStore } from "@/lib/store/authStore";
+import { useEffect } from "react";
 
-interface AuthProviderProps {
+type Props = {
   children: React.ReactNode;
-}
+};
 
-const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const pathname = usePathname();
-  const setUser = useAuthStore((state: AuthState) => state.setUser);
+const AuthProvider = ({ children }: Props) => {
+  const setUser = useAuthStore((state) => state.setUser);
   const clearIsAuthenticated = useAuthStore(
-    (state: AuthState) => state.clearIsAuthenticated
+    (state) => state.clearIsAuthenticated
   );
 
-  // Приватні маршрути
-  const isPrivateRoute =
-    pathname?.startsWith("/profile") || pathname?.startsWith("/notes");
-
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        setIsLoading(true);
-        const sessionUser = await getSession();
+    const fetchUser = async () => {
+      // Робимо лише ОДИН запит, який повертає користувача або null
+      const user = await checkSession();
 
-        if (sessionUser) {
-          setUser(sessionUser);
-        } else {
-          clearIsAuthenticated();
-        }
-      } catch {
+      if (user) {
+        // Якщо користувач є, встановлюємо його в стейт
+        setUser(user);
+      } else {
+        // Якщо користувача немає, очищуємо дані
         clearIsAuthenticated();
-      } finally {
-        setIsLoading(false);
       }
     };
-
-    checkSession();
+    fetchUser();
   }, [setUser, clearIsAuthenticated]);
 
-  // Показуємо лоадер тільки на приватних сторінках під час завантаження
-  if (isLoading && isPrivateRoute) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <div>Loading...</div>
-      </div>
-    );
-  }
-
-  // Завжди показуємо children (middleware контролює доступ)
-  return <>{children}</>;
+  return children;
 };
 
 export default AuthProvider;

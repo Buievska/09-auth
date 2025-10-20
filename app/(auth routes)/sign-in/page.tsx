@@ -1,102 +1,38 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useSearchParams } from "next/navigation";
-import { isAxiosError, type AxiosError } from "axios";
-import { login } from "@/lib/api/clientApi";
-import { useAuthStore, type AuthState } from "@/lib/store/authStore";
-import type { AuthCredentials } from "@/types/auth";
 import css from "./SignIn.module.css";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/lib/store/authStore";
+import { ApiError } from "@/app/api/api";
+import { login, UserRegister } from "@/lib/api/clientApi";
 
-const isValidEmail = (value: string) => /.+@.+\..+/.test(value);
+const SignIn = () => {
+  const router = useRouter();
+  const [error, setError] = useState("");
+  const setUser = useAuthStore((state) => state.setUser);
 
-const SignInPage = () => {
-  const searchParams = useSearchParams();
-  const setUser = useAuthStore((state: AuthState) => state.setUser);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
-
-    const formData = new FormData(event.currentTarget);
-    const email = ((formData.get("email") ?? "") as string).trim();
-    const password = (formData.get("password") as string) ?? "";
-
-    if (!email || !password) {
-      setError("Будь ласка, введіть email і пароль.");
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      setError("Невірний формат email.");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Пароль має містити щонайменше 6 символів.");
-      return;
-    }
-
-    const payload: AuthCredentials = { email, password };
-
+  const handleSubmit = async (formData: FormData) => {
     try {
-      setIsSubmitting(true);
-      const user = await login(payload);
-      setUser(user);
-
-      // Wait for cookies to be set
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      const redirectTarget = searchParams?.get("redirect");
-      const destination =
-        redirectTarget && redirectTarget.startsWith("/")
-          ? redirectTarget
-          : "/profile";
-
-      window.location.href = destination;
-    } catch (error: unknown) {
-      if (isAxiosError(error)) {
-        const axiosError = error as AxiosError<{
-          message?: string;
-          error?: string;
-          validation?: { body?: { message?: string } };
-        }>;
-        const responseData = axiosError.response?.data;
-
-        if (axiosError.response?.status === 400) {
-          const validationMessage = responseData?.validation?.body?.message;
-          setError(
-            validationMessage ?? "Перевірте email та пароль і спробуйте ще раз."
-          );
-          return;
-        }
-
-        if (axiosError.response?.status === 401) {
-          setError(
-            "Такого акаунта не знайдено або пароль невірний. Зареєструйтесь або перевірте дані."
-          );
-          return;
-        }
-
-        const message =
-          responseData?.message ||
-          responseData?.error ||
-          axiosError.message ||
-          "Не вдалося виконати вхід. Спробуйте, будь ласка, ще раз.";
-        setError(message);
+      const formValues = Object.fromEntries(formData) as UserRegister;
+      const res = await login(formValues);
+      if (res) {
+        setUser(res);
+        router.push("/profile");
       } else {
-        setError("Не вдалося виконати вхід. Спробуйте, будь ласка, ще раз.");
+        setError("Invalid email or password");
       }
-    } finally {
-      setIsSubmitting(false);
+    } catch (error) {
+      setError(
+        (error as ApiError).response?.data?.error ??
+          (error as ApiError).message ??
+          "Oops... some error"
+      );
     }
   };
-
   return (
     <main className={css.mainContent}>
-      <form className={css.form} onSubmit={handleSubmit} noValidate>
+      <form action={handleSubmit} className={css.form}>
         <h1 className={css.formTitle}>Sign in</h1>
 
         <div className={css.formGroup}>
@@ -121,20 +57,16 @@ const SignInPage = () => {
           />
         </div>
 
-        {error && <p className={css.error}>{error}</p>}
-
         <div className={css.actions}>
-          <button
-            type="submit"
-            className={css.submitButton}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Виконуємо вхід..." : "Увійти"}
+          <button type="submit" className={css.submitButton}>
+            Log in
           </button>
         </div>
+
+        {error && <p className={css.error}>{error}</p>}
       </form>
     </main>
   );
 };
 
-export default SignInPage;
+export default SignIn;

@@ -1,69 +1,61 @@
-import type { AxiosRequestConfig } from "axios";
 import { cookies } from "next/headers";
-import { api } from "./api";
-import type { Note } from "@/types/note";
-import type { UpdateUserRequest } from "@/types/auth";
-import type { User } from "@/types/user";
-import type { FetchNotesParams } from "./clientApi";
+import { nextServer } from "./api";
+import { User } from "@/types/user";
+import { Note } from "@/types/note";
+import { fetchNotesProps } from "./clientApi";
+import { apiServer } from "./api";
 
-const mergeConfigs = async (
-  config?: AxiosRequestConfig
-): Promise<AxiosRequestConfig> => {
+export const checkServerSession = async () => {
   const cookieStore = await cookies();
-  const allCookies = cookieStore.getAll ? cookieStore.getAll() : [];
-  const cookieHeader = allCookies.map((c) => `${c.name}=${c.value}`).join("; ");
-
-  return {
-    ...config,
+  const res = await nextServer.get("/auth/session", {
     headers: {
-      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-      ...(config?.headers ?? {}),
+      Cookie: cookieStore.toString(),
     },
-  };
+  });
+
+  return res;
 };
 
-export const fetchNotesServer = async (params?: FetchNotesParams) => {
-  const config = await mergeConfigs();
-  return api.get("/notes", { params, ...config }).then((res) => res.data);
+export const getServerMe = async (): Promise<User> => {
+  const cookieStore = await cookies();
+
+  const { data } = await apiServer.get("/users/me", {
+    headers: {
+      Cookie: cookieStore.toString(),
+    },
+  });
+
+  return data;
 };
 
-export const fetchNoteByIdServer = async (id: string) => {
-  const config = await mergeConfigs();
-  return api.get<Note>(`/notes/${id}`, config).then((res) => res.data);
-};
+export async function fetchServerNotes(
+  search: string,
+  page: number,
+  tag?: string
+): Promise<fetchNotesProps> {
+  const cookieStore = await cookies();
+  const request = await nextServer.get<fetchNotesProps>("/notes", {
+    params: {
+      search,
+      page,
+      perPage: 12,
+      tag,
+    },
+    headers: {
+      Cookie: cookieStore.toString(),
+    },
+  });
 
-export const createNoteServer = async (
-  payload: Omit<Note, "id" | "createdAt" | "updatedAt">
-) => {
-  const config = await mergeConfigs();
-  return api.post<Note>("/notes", payload, config).then((res) => res.data);
-};
+  return request.data;
+}
 
-export const updateNoteServer = async (id: string, payload: Partial<Note>) => {
-  const config = await mergeConfigs();
-  return api
-    .patch<Note>(`/notes/${id}`, payload, config)
-    .then((res) => res.data);
-};
+export async function fetchServerNoteById(id: string): Promise<Note> {
+  const cookieStore = await cookies();
+  const res = await nextServer.get<Note>(`/notes/${id}`, {
+    headers: {
+      Cookie: cookieStore.toString(),
+    },
+  });
 
-export const deleteNoteServer = async (id: string) => {
-  const config = await mergeConfigs();
-  return api.delete<Note>(`/notes/${id}`, config).then((res) => res.data);
-};
-
-export const getSessionServer = async () =>
-  api.get("/auth/session", await mergeConfigs()).then((res) => res.data);
-
-export const getCurrentUserServer = async () => {
-  try {
-    const config = await mergeConfigs();
-    return api.get<User>("/users/me", config).then((res) => res.data);
-  } catch {
-    return null;
-  }
-};
-
-export const updateUserServer = async (payload: UpdateUserRequest) => {
-  const config = await mergeConfigs();
-  return api.patch<User>("/users/me", payload, config).then((res) => res.data);
-};
+  return res.data;
+}

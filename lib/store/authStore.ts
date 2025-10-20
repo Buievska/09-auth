@@ -1,26 +1,20 @@
-import { create, type StoreApi } from "zustand";
-import type { User } from "@/types/user";
+import { create } from "zustand";
+import { User } from "@/types/user";
 
-export type AuthState = {
-  user: User | null;
+type AuthStore = {
   isAuthenticated: boolean;
-  setUser: (user: User | null) => void;
+  user: User | null;
+  setUser: (user: User) => void;
   clearIsAuthenticated: () => void;
 };
 
-type SetState = StoreApi<AuthState>["setState"];
-
-export const useAuthStore = create<AuthState>()((set: SetState) => ({
-  user: null,
+export const useAuthStore = create<AuthStore>()((set) => ({
   isAuthenticated: false,
-  setUser: (user: User | null) =>
-    set({
-      user,
-      isAuthenticated: Boolean(user),
-    }),
-  clearIsAuthenticated: () =>
-    set({
-      user: null,
-      isAuthenticated: false,
-    }),
+  user: null,
+  setUser: (user: User) => {
+    set(() => ({ user, isAuthenticated: true }));
+  },
+  clearIsAuthenticated: () => {
+    set(() => ({ user: null, isAuthenticated: false }));
+  },
 }));
