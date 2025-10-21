@@ -3,7 +3,6 @@ import { nextServer } from "./api";
 import { User } from "@/types/user";
 import { Note } from "@/types/note";
 import { fetchNotesProps } from "./clientApi";
-import { apiServer } from "./api";
 
 export const checkServerSession = async () => {
   const cookieStore = await cookies();
@@ -18,13 +17,11 @@ export const checkServerSession = async () => {
 
 export const getServerMe = async (): Promise<User> => {
   const cookieStore = await cookies();
-
-  const { data } = await apiServer.get("/users/me", {
+  const { data } = await nextServer.get<User>("/users/me", {
     headers: {
       Cookie: cookieStore.toString(),
     },
   });
-
   return data;
 };
 
@@ -35,15 +32,8 @@ export async function fetchServerNotes(
 ): Promise<fetchNotesProps> {
   const cookieStore = await cookies();
   const request = await nextServer.get<fetchNotesProps>("/notes", {
-    params: {
-      search,
-      page,
-      perPage: 12,
-      tag,
-    },
-    headers: {
-      Cookie: cookieStore.toString(),
-    },
+    params: { search, page, perPage: 12, tag },
+    headers: { Cookie: cookieStore.toString() },
   });
 
   return request.data;
@@ -52,10 +42,7 @@ export async function fetchServerNotes(
 export async function fetchServerNoteById(id: string): Promise<Note> {
   const cookieStore = await cookies();
   const res = await nextServer.get<Note>(`/notes/${id}`, {
-    headers: {
-      Cookie: cookieStore.toString(),
-    },
+    headers: { Cookie: cookieStore.toString() },
   });
-
   return res.data;
 }

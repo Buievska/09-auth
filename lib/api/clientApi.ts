@@ -1,6 +1,7 @@
 import { User } from "@/types/user";
 import type { Note, NoteTags } from "../../types/note";
 import { nextServer } from "./api";
+import { AxiosError } from "axios";
 
 export interface fetchNotesProps {
   notes: Note[];
@@ -28,20 +29,13 @@ export async function fetchNotes(
   tag?: string
 ): Promise<fetchNotesProps> {
   const request = await nextServer.get<fetchNotesProps>("/notes", {
-    params: {
-      search,
-      page,
-      perPage: 12,
-      tag,
-    },
+    params: { search, page, perPage: 12, tag },
   });
-
   return request.data;
 }
 
 export async function createNote(note: createNoteProps): Promise<Note> {
   const postRequest = await nextServer.post<Note>("/notes", note);
-
   return postRequest.data;
 }
 
@@ -56,8 +50,16 @@ export async function fetchNoteById(id: string): Promise<Note> {
 }
 
 export async function register(data: UserRegister) {
-  const res = await nextServer.post<User>("/auth/register", data);
-  return res.data;
+  try {
+    const res = await nextServer.post<User>("/auth/register", data);
+    return res.data;
+  } catch (error) {
+    const err = error as AxiosError<{ message: string }>;
+    if (err.response?.status === 409) {
+      throw new Error("Користувач з таким email вже існує!");
+    }
+    throw err;
+  }
 }
 
 export async function login(data: UserRegister) {
@@ -71,12 +73,10 @@ export async function logout(): Promise<void> {
 
 export async function checkSession(): Promise<User | null> {
   try {
-    // Цей запит поверне користувача, якщо сесія дійсна
     const { data } = await nextServer.get<User>("/auth/session");
     return data;
   } catch {
-    // Якщо сесії немає, сервер поверне помилку (напр. 401), і ми потрапимо сюди
-    return null;
+    return null; // Якщо сесія недійсна або куків нема
   }
 }
 

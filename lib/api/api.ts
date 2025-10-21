@@ -1,13 +1,11 @@
 import axios from "axios";
 
+const baseURL =
+  typeof window !== "undefined"
+    ? "/api"
+    : process.env.NEXT_PUBLIC_API_URL || "https://notehub-api.goit.study";
+
 export const nextServer = axios.create({
-  // Просто вказуємо відносний шлях до нашого API
-  baseURL: "/api",
-
-  // Цей параметр важливий для передачі кукі
+  baseURL,
   withCredentials: true,
-});
-
-export const apiServer = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
 });
