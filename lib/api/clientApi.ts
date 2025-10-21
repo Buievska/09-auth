@@ -49,7 +49,7 @@ export async function fetchNoteById(id: string): Promise<Note> {
   return res.data;
 }
 
-export async function register(data: UserRegister) {
+export async function register(data: UserRegister): Promise<User> {
   try {
     const res = await nextServer.post<User>("/auth/register", data);
     return res.data;
@@ -62,7 +62,7 @@ export async function register(data: UserRegister) {
   }
 }
 
-export async function login(data: UserRegister) {
+export async function login(data: UserRegister): Promise<User> {
   const res = await nextServer.post<User>("/auth/login", data);
   return res.data;
 }
@@ -80,12 +80,12 @@ export async function checkSession(): Promise<User | null> {
   }
 }
 
-export async function getMe() {
+export async function getMe(): Promise<User> {
   const { data } = await nextServer.get<User>("/users/me");
   return data;
 }
 
-export const updateMe = async (payload: UpdateUserRequest) => {
+export async function updateMe(payload: UpdateUserRequest): Promise<User> {
   const res = await nextServer.patch<User>("/users/me", payload);
   return res.data;
-};
+}
